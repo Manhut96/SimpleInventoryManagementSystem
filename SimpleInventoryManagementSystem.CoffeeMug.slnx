@@ -1,3 +1,8 @@
 <Solution>
-  <Project Path="SimpleInventoryManagementSystem.API/SimpleInventoryManagementSystem.API.csproj" />
+  <Project Path="src/SimpleInventoryManagementSystem.Domain/SimpleInventoryManagementSystem.Domain.csproj" />
+  <Project Path="src/SimpleInventoryManagementSystem.Application/SimpleInventoryManagementSystem.Application.csproj" />
+  <Project Path="src/SimpleInventoryManagementSystem.Infrastructure/SimpleInventoryManagementSystem.Infrastructure.csproj" />
+  <Project Path="src/SimpleInventoryManagementSystem.API/SimpleInventoryManagementSystem.API.csproj" />
+  <Project Path="tests/SimpleInventoryManagementSystem.Tests.Unit/SimpleInventoryManagementSystem.Tests.Unit.csproj" />
+  <Project Path="tests/SimpleInventoryManagementSystem.Tests.Integration/SimpleInventoryManagementSystem.Tests.Integration.csproj" />
 </Solution>

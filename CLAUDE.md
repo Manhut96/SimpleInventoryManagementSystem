@@ -29,7 +29,8 @@ References: Domain ← Application ← Infrastructure ← API; Tests.Unit → Do
 
 ## Key Conventions
 
-- **Entities = classes** with `private set` + `static Create(...)` factory. No records for domain objects.
+- **Entities = classes** with `private set` + `static Create(...)` factory, always have `Id: Guid`. No records for domain objects.
+- **ValueObjects = classes** with `private set` + `static Create(...)` factory, no `Id` property. Folder: `Domain/ValueObjects/`. EF Core maps them via `OwnsMany`/`OwnsOne`.
 - **DTOs/requests = records** in `Application/Contracts/`.
 - **No AutoMapper** — manual mapping only (constructor / record init).
 - **DB tables**: `ToTable("tbl_*", "schema_name")` per entity config. No `HasDefaultSchema`.

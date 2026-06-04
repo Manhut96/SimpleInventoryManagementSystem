@@ -1,3 +1,5 @@
+using SimpleInventoryManagementSystem.Domain.ValueObjects;
+
 namespace SimpleInventoryManagementSystem.Domain.Entities;
 
 public class Order

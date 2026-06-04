@@ -2,6 +2,7 @@ using SimpleInventoryManagementSystem.Domain.Enums;
 using SimpleInventoryManagementSystem.Domain.Interfaces;
 using SimpleInventoryManagementSystem.Domain.Pricing.Models;
 
+
 namespace SimpleInventoryManagementSystem.Domain.Pricing;
 
 public sealed class PricingCalculatorService(
@@ -15,18 +16,18 @@ public sealed class PricingCalculatorService(
         var maxUnitPrice = items.Max(i => i.UnitPrice);
         var locationMultiplier = LocationPricingService.GetMultiplier(location);
 
-        var (winner, winnerPct) = SelectWinner(context, totalOrderValue, maxUnitPrice);
+        var winner = SelectWinner(context, totalOrderValue, maxUnitPrice);
 
         return items
-            .Select(item => PriceItem(item, winner, winnerPct, maxUnitPrice, locationMultiplier))
+            .Select(item => PriceItem(item, winner, maxUnitPrice, locationMultiplier))
             .ToList();
     }
 
-    private (IDiscountStrategy? Winner, decimal? Pct) SelectWinner(
+    private DiscountWinner SelectWinner(
         PricingContext context, decimal totalOrderValue, decimal maxUnitPrice)
     {
-        IDiscountStrategy? winner = null;
-        decimal? winnerPct = null;
+        IDiscountStrategy? bestStrategy = null;
+        decimal? bestPct = null;
         var bestSavings = 0m;
 
         foreach (var strategy in strategies)
@@ -38,12 +39,12 @@ public sealed class PricingCalculatorService(
             if (savings > bestSavings)
             {
                 bestSavings = savings;
-                winner = strategy;
-                winnerPct = discount;
+                bestStrategy = strategy;
+                bestPct = discount;
             }
         }
 
-        return (winner, winnerPct);
+        return new DiscountWinner(bestStrategy, bestPct);
     }
 
     private static decimal ComputeSavings(
@@ -53,21 +54,20 @@ public sealed class PricingCalculatorService(
             : totalOrderValue * discountPct;
 
     private static PricedOrderLineItem PriceItem(
-        OrderLineItem item, IDiscountStrategy? winner, decimal? winnerPct,
-        decimal maxUnitPrice, decimal locationMultiplier)
+        OrderLineItem item, DiscountWinner winner, decimal maxUnitPrice, decimal locationMultiplier)
     {
-        var discounted = ApplyStrategyDiscount(item, winner, winnerPct, maxUnitPrice);
+        var discounted = ApplyStrategyDiscount(item, winner, maxUnitPrice);
         return new PricedOrderLineItem(item.ProductId, item.Quantity, item.UnitPrice, discounted * locationMultiplier);
     }
 
     private static decimal ApplyStrategyDiscount(
-        OrderLineItem item, IDiscountStrategy? winner, decimal? winnerPct, decimal maxUnitPrice)
+        OrderLineItem item, DiscountWinner winner, decimal maxUnitPrice)
     {
-        if (winner is HolidaySaleDiscountStrategy && item.UnitPrice == maxUnitPrice)
-            return item.UnitPrice * (1 - winnerPct!.Value);
+        if (winner.Strategy is HolidaySaleDiscountStrategy && item.UnitPrice == maxUnitPrice)
+            return item.UnitPrice * (1 - winner.Pct!.Value);
 
-        if (winner is not null and not HolidaySaleDiscountStrategy)
-            return item.UnitPrice * (1 - winnerPct!.Value);
+        if (winner.Strategy is not null and not HolidaySaleDiscountStrategy)
+            return item.UnitPrice * (1 - winner.Pct!.Value);
 
         return item.UnitPrice;
     }

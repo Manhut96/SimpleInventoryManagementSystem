@@ -1,4 +1,4 @@
-namespace SimpleInventoryManagementSystem.Domain.Entities;
+namespace SimpleInventoryManagementSystem.Domain.ValueObjects;
 
 public class OrderItem
 {

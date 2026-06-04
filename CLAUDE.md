@@ -36,6 +36,11 @@ References: Domain ← Application ← Infrastructure ← API; Tests.Unit → Do
 - **UnitOfWork** is Scoped (holds per-request `_pending` event queue).
 - **`public partial class Program {}`** at bottom of `Program.cs` — required for integration tests.
 - Routes: no `/api` prefix — `[Route("[controller]")]` only.
+- **No anonymous tuples in public APIs** — always extract `(...)` tuples into named records in dedicated files. Tuples are allowed only as local variables inside method bodies.
+- **Helper/auxiliary records** (data carriers, structured results, input/output shapes) live in a `Models/` subfolder nested under the feature folder they belong to (e.g. `Domain/Discounts/Models/OrderLineItem.cs`).
+- **`var` everywhere** — use `var` for all local variable declarations where the compiler can infer the type, including simple numeric literals (`var count = 5`, `var price = 9.99m`). Only omit `var` when the type cannot be inferred or explicit declaration is required by the language.
+- **Extract private methods** — split longer logic in handlers and services into small, well-named `private` methods. Each method should do one thing and read like a sentence. Prefer many short private methods over one long public method.
+- **Per-feature `RegistrationExtensions.cs`** — every feature folder in Application/Infrastructure gets its own `RegistrationExtensions.cs` with a single `static` extension method on `IServiceCollection` that registers that feature's services (e.g. `AddPricingServices()`, `AddPersistence(config)`). Domain stays pure (no DI package). Top-level `ApplicationServiceExtensions` / `InfrastructureServiceExtensions` just chain-call the per-feature methods.
 
 ## Implementation Plan
 

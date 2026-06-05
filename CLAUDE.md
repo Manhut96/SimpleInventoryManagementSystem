@@ -25,6 +25,7 @@ References: Domain ← Application ← Infrastructure ← API; Tests.Unit → Do
 - Serilog → Console (structured)
 - Scalar UI (`/scalar/v1`), RFC 9457 ProblemDetails
 - xUnit + FluentAssertions + NSubstitute; integration via `WebApplicationFactory` + Testcontainers
+- Unit handler tests use `TestSIMSDbContext : DbContext, ISIMSDbContext` with `UseInMemoryDatabase` — **never mock `DbSet<T>` with NSubstitute or custom async providers**
 - Docker Compose: api + postgres:17-alpine + adminer
 
 ## Key Conventions
@@ -40,7 +41,7 @@ References: Domain ← Application ← Infrastructure ← API; Tests.Unit → Do
 - **No anonymous tuples in public APIs** — always extract `(...)` tuples into named records in dedicated files. Tuples are allowed only as local variables inside method bodies.
 - **Helper/auxiliary records** (data carriers, structured results, input/output shapes) live in a `Models/` subfolder nested under the feature folder they belong to (e.g. `Domain/Discounts/Models/OrderLineItem.cs`).
 - **`var` everywhere** — use `var` for all local variable declarations where the compiler can infer the type, including simple numeric literals (`var count = 5`, `var price = 9.99m`). Only omit `var` when the type cannot be inferred or explicit declaration is required by the language.
-- **Extract private methods** — split longer logic in handlers and services into small, well-named `private` methods. Each method should do one thing and read like a sentence. Prefer many short private methods over one long public method.
+- **Extract private methods** — split longer logic in handlers and services into small, well-named `private` methods. Each method should do one thing and read like a sentence. Prefer many short private methods over one long public method. **Do NOT extract trivial one-liner wrappers** that just delegate to another method with the same arguments (e.g. `CreateProduct` that only calls `Product.Create(request.Name, ...)`, or `ComputeTotal` that only calls `.Sum(...)`). Extract only when the body contains real logic, multiple steps, branching, or a complex expression worth naming (multi-argument factory + LINQ chain, event construction with computed values, etc.).
 - **Per-feature `RegistrationExtensions.cs`** — every feature folder in Application/Infrastructure gets its own `RegistrationExtensions.cs` with a single `static` extension method on `IServiceCollection` that registers that feature's services (e.g. `AddPricingServices()`, `AddPersistence(config)`). Domain stays pure (no DI package). Top-level `ApplicationServiceExtensions` / `InfrastructureServiceExtensions` just chain-call the per-feature methods.
 
 ## Implementation Plan

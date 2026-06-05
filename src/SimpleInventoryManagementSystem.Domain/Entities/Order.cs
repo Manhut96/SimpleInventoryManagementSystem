@@ -6,13 +6,13 @@ public class Order
 {
     private Order() { }
 
-    private readonly List<OrderItem> _items = [];
+    private List<OrderItem> _items = [];
 
     public Guid Id { get; private set; }
     public Guid CustomerId { get; private set; }
     public decimal TotalAmount { get; private set; }
     public DateTimeOffset PlacedAt { get; private set; }
-    public IReadOnlyList<OrderItem> Items { get; private set; } = [];
+    public IReadOnlyList<OrderItem> Items => _items;
 
     public static Order Create(Guid customerId, IReadOnlyList<OrderItem> items, decimal totalAmount, DateTimeOffset placedAt)
     {
@@ -24,7 +24,6 @@ public class Order
             PlacedAt = placedAt
         };
         order._items.AddRange(items);
-        order.Items = order._items;
         return order;
     }
 }

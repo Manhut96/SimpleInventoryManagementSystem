@@ -1,8 +1,6 @@
-using SimpleInventoryManagementSystem.Domain.Interfaces;
-
 namespace SimpleInventoryManagementSystem.Domain.Pricing;
 
-public sealed class HolidaySaleDiscountStrategy(IDateTimeProvider dateTimeProvider) : IDiscountStrategy
+public sealed class HolidaySaleDiscountStrategy : IDiscountStrategy
 {
     private static readonly HashSet<(int Month, int Day)> Holidays =
     [
@@ -11,7 +9,7 @@ public sealed class HolidaySaleDiscountStrategy(IDateTimeProvider dateTimeProvid
 
     public decimal? TryGetDiscount(PricingContext context)
     {
-        var today = dateTimeProvider.UtcNow;
-        return Holidays.Contains((today.Month, today.Day)) ? 0.15m : null;
+        var orderDate = context.OrderDate;
+        return Holidays.Contains((orderDate.Month, orderDate.Day)) ? 0.15m : null;
     }
 }

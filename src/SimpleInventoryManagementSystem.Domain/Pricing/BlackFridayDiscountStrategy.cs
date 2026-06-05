@@ -1,17 +1,15 @@
-using SimpleInventoryManagementSystem.Domain.Interfaces;
-
 namespace SimpleInventoryManagementSystem.Domain.Pricing;
 
-public sealed class BlackFridayDiscountStrategy(IDateTimeProvider dateTimeProvider) : IDiscountStrategy
+public sealed class BlackFridayDiscountStrategy : IDiscountStrategy
 {
     public decimal? TryGetDiscount(PricingContext context)
     {
-        var today = dateTimeProvider.UtcNow;
+        var orderDate = context.OrderDate;
 
-        if (today.Month != 11)
+        if (orderDate.Month != 11)
             return null;
 
-        if (!IsLastFridayOfNovember(today))
+        if (!IsLastFridayOfNovember(orderDate))
             return null;
 
         return 0.25m;

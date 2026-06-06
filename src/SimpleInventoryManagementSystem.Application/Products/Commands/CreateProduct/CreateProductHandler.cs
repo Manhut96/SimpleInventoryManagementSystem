@@ -1,33 +1,23 @@
-using MediatR;
+using SimpleInventoryManagementSystem.Application.Common;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Contracts.Responses;
 using SimpleInventoryManagementSystem.Domain.Entities;
 using SimpleInventoryManagementSystem.Domain.Events;
+using SimpleInventoryManagementSystem.Domain.Interfaces;
 
 namespace SimpleInventoryManagementSystem.Application.Products.Commands.CreateProduct;
 
-public sealed class CreateProductHandler(ISIMSDbContext dbContext, IUnitOfWork unitOfWork)
-    : IRequestHandler<CreateProductCommand, ProductDto>
+public sealed class CreateProductHandler(
+    ITransactionScopeFactory transactionScopeFactory,
+    ISIMSDbContext dbContext,
+    IDateTimeProvider dateTimeProvider)
+    : TransactionalHandler<CreateProductCommand, ProductDto>(transactionScopeFactory, dbContext, dateTimeProvider)
 {
-    public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)
+    protected override Task<ProductDto> HandleCoreAsync(CreateProductCommand request, CancellationToken cancellationToken)
     {
-        var product = Product.Create(request.Name, request.Description, request.Price, request.InitialStock);
-        await PersistProductAsync(product, cancellationToken);
-        return new ProductDto(product.Id, product.Name, product.Description, product.Price, product.Stock);
+        var product = ProductEntity.Create(request.Name, request.Description, request.Price, request.InitialStock);
+        DbContext.Products.Add(product);
+        WriteEvent(new ProductCreatedEvent(product.Id, product.Name, product.Price, product.Stock, DateTimeProvider.UtcNow));
+        return Task.FromResult(new ProductDto(product.Id, product.Name, product.Description, product.Price, product.Stock));
     }
-
-    private async Task PersistProductAsync(Product product, CancellationToken cancellationToken)
-    {
-        dbContext.Products.Add(product);
-        EnqueueProductCreatedEvent(product);
-        await unitOfWork.CommitAsync(cancellationToken);
-    }
-
-    private void EnqueueProductCreatedEvent(Product product)
-        => unitOfWork.Enqueue(new ProductCreatedEvent(
-            product.Id,
-            product.Name,
-            product.Price,
-            product.Stock,
-            DateTimeOffset.UtcNow));
 }

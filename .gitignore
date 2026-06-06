@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 
 .claude/
+
+# Recruitment task source document (not part of deliverable)
+Requirements.md

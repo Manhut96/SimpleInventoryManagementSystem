@@ -2,9 +2,9 @@ using SimpleInventoryManagementSystem.Domain.Exceptions;
 
 namespace SimpleInventoryManagementSystem.Domain.Entities;
 
-public class Product
+public class ProductEntity
 {
-    private Product() { }
+    private ProductEntity() { }
 
     public Guid Id { get; private set; }
     public string Name { get; private set; } = string.Empty;
@@ -12,9 +12,9 @@ public class Product
     public decimal Price { get; private set; }
     public int Stock { get; private set; }
 
-    public static Product Create(string name, string description, decimal price, int initialStock)
+    public static ProductEntity Create(string name, string description, decimal price, int initialStock)
     {
-        return new Product
+        return new ProductEntity
         {
             Id = Guid.NewGuid(),
             Name = name,

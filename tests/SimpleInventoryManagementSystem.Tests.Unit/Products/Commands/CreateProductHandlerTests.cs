@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Products.Commands.CreateProduct;
-using SimpleInventoryManagementSystem.Domain.Events;
+using SimpleInventoryManagementSystem.Domain.Interfaces;
 using SimpleInventoryManagementSystem.Tests.Unit.Infrastructure;
 
 namespace SimpleInventoryManagementSystem.Tests.Unit.Products.Commands;
@@ -11,7 +11,6 @@ namespace SimpleInventoryManagementSystem.Tests.Unit.Products.Commands;
 public sealed class CreateProductHandlerTests : IDisposable
 {
     private readonly TestSIMSDbContext _dbContext;
-    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly CreateProductHandler _sut;
 
     public CreateProductHandlerTests()
@@ -20,10 +19,27 @@ public sealed class CreateProductHandlerTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TestSIMSDbContext(options);
-        _sut = new CreateProductHandler(_dbContext, _unitOfWork);
+        _sut = new CreateProductHandler(NoOpFactory(), _dbContext, NoOpDateTimeProvider());
     }
 
     public void Dispose() => _dbContext.Dispose();
+
+    private static ITransactionScopeFactory NoOpFactory()
+    {
+        var factory = Substitute.For<ITransactionScopeFactory>();
+        var scope = Substitute.For<ITransactionScope>();
+        scope.CommitAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        scope.DisposeAsync().Returns(ValueTask.CompletedTask);
+        factory.BeginAsync(Arg.Any<CancellationToken>()).Returns(scope);
+        return factory;
+    }
+
+    private static IDateTimeProvider NoOpDateTimeProvider()
+    {
+        var dateTimeProvider = Substitute.For<IDateTimeProvider>();
+        dateTimeProvider.UtcNow.Returns(DateTimeOffset.UtcNow);
+        return dateTimeProvider;
+    }
 
     [Fact]
     public async Task Handle_ValidCommand_ShouldAddProductToDbContext()
@@ -40,26 +56,13 @@ public sealed class CreateProductHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ShouldEnqueueProductCreatedEvent()
+    public async Task Handle_ValidCommand_ShouldStageProductCreatedEventInOutbox()
     {
         var command = new CreateProductCommand("Coffee Mug", "A nice mug", 9.99m, 10);
 
         await _sut.Handle(command, CancellationToken.None);
 
-        _unitOfWork.Received(1).Enqueue(Arg.Is<ProductCreatedEvent>(e =>
-            e.Name == command.Name &&
-            e.Price == command.Price &&
-            e.Stock == command.InitialStock));
-    }
-
-    [Fact]
-    public async Task Handle_ValidCommand_ShouldCommitUnitOfWork()
-    {
-        var command = new CreateProductCommand("Coffee Mug", "A nice mug", 9.99m, 10);
-
-        await _sut.Handle(command, CancellationToken.None);
-
-        await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+        _dbContext.OutboxEvents.Local.Should().ContainSingle(e => e.EventType == "ProductCreatedEvent");
     }
 
     [Fact]

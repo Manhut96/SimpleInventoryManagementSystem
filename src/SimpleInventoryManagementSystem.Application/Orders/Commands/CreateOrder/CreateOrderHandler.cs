@@ -1,11 +1,12 @@
-using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SimpleInventoryManagementSystem.Application.Common;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Contracts.Requests;
 using SimpleInventoryManagementSystem.Application.Contracts.Responses;
 using SimpleInventoryManagementSystem.Domain.Entities;
 using SimpleInventoryManagementSystem.Domain.Events;
 using SimpleInventoryManagementSystem.Domain.Exceptions;
+using SimpleInventoryManagementSystem.Domain.Interfaces;
 using SimpleInventoryManagementSystem.Domain.Pricing;
 using SimpleInventoryManagementSystem.Domain.Pricing.Models;
 using SimpleInventoryManagementSystem.Domain.ValueObjects;
@@ -13,12 +14,13 @@ using SimpleInventoryManagementSystem.Domain.ValueObjects;
 namespace SimpleInventoryManagementSystem.Application.Orders.Commands.CreateOrder;
 
 public sealed class CreateOrderHandler(
+    ITransactionScopeFactory transactionScopeFactory,
     ISIMSDbContext dbContext,
-    IUnitOfWork unitOfWork,
+    IDateTimeProvider dateTimeProvider,
     IPricingCalculatorService pricingCalculator)
-    : IRequestHandler<CreateOrderCommand, OrderDto>
+    : TransactionalHandler<CreateOrderCommand, OrderDto>(transactionScopeFactory, dbContext, dateTimeProvider)
 {
-    public async Task<OrderDto> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
+    protected override async Task<OrderDto> HandleCoreAsync(CreateOrderCommand request, CancellationToken cancellationToken)
     {
         var customer = await LoadCustomerAsync(request.CustomerId, cancellationToken);
         var products = await LoadProductsAsync(request.Items, cancellationToken);
@@ -26,14 +28,15 @@ public sealed class CreateOrderHandler(
         var pricedItems = pricingCalculator.Calculate(rawItems, customer.Location);
         DeductStock(request.Items, products);
         var order = CreateOrder(request.CustomerId, pricedItems);
-        await PersistOrderAsync(order, cancellationToken);
+        DbContext.Orders.Add(order);
+        WriteEvent(new OrderCreatedEvent(order.Id, order.CustomerId, order.TotalAmount, DateTimeProvider.UtcNow));
         return MapToDto(order);
     }
 
-    private async Task<Customer> LoadCustomerAsync(Guid customerId, CancellationToken ct)
+    private async Task<CustomerEntity> LoadCustomerAsync(Guid customerId, CancellationToken cancellationToken)
     {
-        var customer = await dbContext.Customers
-            .FirstOrDefaultAsync(c => c.Id == customerId, ct);
+        var customer = await DbContext.Customers
+            .FirstOrDefaultAsync(c => c.Id == customerId, cancellationToken);
 
         if (customer is null)
             throw new CustomerNotFoundException(customerId);
@@ -41,15 +44,15 @@ public sealed class CreateOrderHandler(
         return customer;
     }
 
-    private async Task<Dictionary<Guid, Product>> LoadProductsAsync(
+    private async Task<Dictionary<Guid, ProductEntity>> LoadProductsAsync(
         IReadOnlyList<OrderItemRequest> items,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         var productIds = items.Select(i => i.ProductId).ToList();
 
-        var products = await dbContext.Products
+        var products = await DbContext.Products
             .Where(p => productIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, ct);
+            .ToDictionaryAsync(p => p.Id, cancellationToken);
 
         foreach (var productId in productIds)
         {
@@ -62,24 +65,24 @@ public sealed class CreateOrderHandler(
 
     private static IReadOnlyList<OrderLineItem> BuildRawLineItems(
         IReadOnlyList<OrderItemRequest> items,
-        Dictionary<Guid, Product> products)
+        Dictionary<Guid, ProductEntity> products)
         => items
             .Select(i => new OrderLineItem(i.ProductId, i.Quantity, products[i.ProductId].Price))
             .ToList();
 
     private static void DeductStock(
         IReadOnlyList<OrderItemRequest> items,
-        Dictionary<Guid, Product> products)
+        Dictionary<Guid, ProductEntity> products)
     {
         foreach (var item in items)
             products[item.ProductId].DeductStock(item.Quantity);
     }
 
-    private static Order CreateOrder(Guid customerId, IReadOnlyList<PricedOrderLineItem> pricedItems)
+    private static OrderEntity CreateOrder(Guid customerId, IReadOnlyList<PricedOrderLineItem> pricedItems)
     {
         var orderItems = BuildOrderItems(pricedItems);
         var totalAmount = pricedItems.Sum(p => p.FinalUnitPrice * p.Quantity);
-        return Order.Create(customerId, orderItems, totalAmount, DateTimeOffset.UtcNow);
+        return OrderEntity.Create(customerId, orderItems, totalAmount, DateTimeOffset.UtcNow);
     }
 
     private static IReadOnlyList<OrderItem> BuildOrderItems(IReadOnlyList<PricedOrderLineItem> pricedItems)
@@ -87,21 +90,7 @@ public sealed class CreateOrderHandler(
             .Select(p => OrderItem.Create(p.ProductId, p.Quantity, p.UnitPrice, p.FinalUnitPrice))
             .ToList();
 
-    private async Task PersistOrderAsync(Order order, CancellationToken ct)
-    {
-        dbContext.Orders.Add(order);
-        EnqueueOrderCreatedEvent(order);
-        await unitOfWork.CommitAsync(ct);
-    }
-
-    private void EnqueueOrderCreatedEvent(Order order)
-        => unitOfWork.Enqueue(new OrderCreatedEvent(
-            order.Id,
-            order.CustomerId,
-            order.TotalAmount,
-            DateTimeOffset.UtcNow));
-
-    private static OrderDto MapToDto(Order order)
+    private static OrderDto MapToDto(OrderEntity order)
     {
         var items = order.Items
             .Select(i => new OrderItemDto(i.ProductId, i.Quantity, i.UnitPrice, i.FinalUnitPrice))

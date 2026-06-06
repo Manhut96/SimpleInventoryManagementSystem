@@ -2,9 +2,9 @@ using SimpleInventoryManagementSystem.Domain.ValueObjects;
 
 namespace SimpleInventoryManagementSystem.Domain.Entities;
 
-public class Order
+public class OrderEntity
 {
-    private Order() { }
+    private OrderEntity() { }
 
     private List<OrderItem> _items = [];
 
@@ -14,9 +14,9 @@ public class Order
     public DateTimeOffset PlacedAt { get; private set; }
     public IReadOnlyList<OrderItem> Items => _items;
 
-    public static Order Create(Guid customerId, IReadOnlyList<OrderItem> items, decimal totalAmount, DateTimeOffset placedAt)
+    public static OrderEntity Create(Guid customerId, IReadOnlyList<OrderItem> items, decimal totalAmount, DateTimeOffset placedAt)
     {
-        var order = new Order
+        var order = new OrderEntity
         {
             Id = Guid.NewGuid(),
             CustomerId = customerId,

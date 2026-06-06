@@ -1,8 +1,8 @@
 namespace SimpleInventoryManagementSystem.Domain.Entities;
 
-public class OutboxEvent
+public class OutboxEventEntity
 {
-    private OutboxEvent() { }
+    private OutboxEventEntity() { }
 
     public Guid Id { get; private set; }
     public string EventType { get; private set; } = string.Empty;
@@ -10,9 +10,9 @@ public class OutboxEvent
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? ProcessedAt { get; private set; }
 
-    public static OutboxEvent Create(string eventType, string payload, DateTimeOffset createdAt)
+    public static OutboxEventEntity Create(string eventType, string payload, DateTimeOffset createdAt)
     {
-        return new OutboxEvent
+        return new OutboxEventEntity
         {
             Id = Guid.NewGuid(),
             EventType = eventType,

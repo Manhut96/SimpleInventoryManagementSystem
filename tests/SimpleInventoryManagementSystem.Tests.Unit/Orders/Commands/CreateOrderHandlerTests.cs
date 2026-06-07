@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Contracts.Requests;
@@ -26,7 +27,7 @@ public sealed class CreateOrderHandlerTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TestSIMSDbContext(options);
-        _sut = new CreateOrderHandler(NoOpFactory(), _dbContext, NoOpDateTimeProvider(), _pricingCalculator);
+        _sut = new CreateOrderHandler(NoOpFactory(), _dbContext, NoOpDateTimeProvider(), _pricingCalculator, NullLoggerFactory.Instance);
     }
 
     public void Dispose() => _dbContext.Dispose();

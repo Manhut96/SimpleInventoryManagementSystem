@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SimpleInventoryManagementSystem.Application.Common;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Contracts.Requests;
@@ -17,8 +18,9 @@ public sealed class CreateOrderHandler(
     ITransactionScopeFactory transactionScopeFactory,
     ISIMSDbContext dbContext,
     IDateTimeProvider dateTimeProvider,
-    IPricingCalculatorService pricingCalculator)
-    : TransactionalHandler<CreateOrderCommand, OrderDto>(transactionScopeFactory, dbContext, dateTimeProvider)
+    IPricingCalculatorService pricingCalculator,
+    ILoggerFactory loggerFactory)
+    : TransactionalHandlerBase<CreateOrderCommand, OrderDto>(transactionScopeFactory, dbContext, dateTimeProvider, loggerFactory)
 {
     protected override async Task<OrderDto> HandleCoreAsync(CreateOrderCommand request, CancellationToken cancellationToken)
     {

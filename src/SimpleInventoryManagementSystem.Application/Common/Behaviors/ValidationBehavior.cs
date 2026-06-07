@@ -1,9 +1,12 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace SimpleInventoryManagementSystem.Application.Common.Behaviors;
 
-public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
+public sealed class ValidationBehavior<TRequest, TResponse>(
+    IEnumerable<IValidator<TRequest>> validators,
+    ILogger<ValidationBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
@@ -15,7 +18,12 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
         var failures = await CollectFailuresAsync(request, cancellationToken);
 
         if (failures.Count != 0)
+        {
+            logger.LogWarning("Validation failed for {Request}: {Errors}",
+                typeof(TRequest).Name,
+                string.Join("; ", failures.Select(f => f.ErrorMessage)));
             throw new ValidationException(failures);
+        }
 
         return await next(cancellationToken);
     }

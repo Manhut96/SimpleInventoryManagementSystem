@@ -6,6 +6,6 @@ namespace SimpleInventoryManagementSystem.Application.Contracts.Requests;
 /// <param name="ProductId">ID of the product to order.</param>
 /// <param name="Quantity">Number of units to order. Must be at least 1.</param>
 public record OrderItemRequest(
-    [property: Required] Guid ProductId,
-    [property: Required, Range(1, int.MaxValue)] int Quantity
+    [Required] Guid ProductId,
+    [Required, Range(1, int.MaxValue)] int Quantity
 );

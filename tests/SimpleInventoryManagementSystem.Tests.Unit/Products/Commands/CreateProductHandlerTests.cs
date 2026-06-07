@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Products.Commands.CreateProduct;
@@ -19,7 +20,7 @@ public sealed class CreateProductHandlerTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TestSIMSDbContext(options);
-        _sut = new CreateProductHandler(NoOpFactory(), _dbContext, NoOpDateTimeProvider());
+        _sut = new CreateProductHandler(NoOpFactory(), _dbContext, NoOpDateTimeProvider(), NullLoggerFactory.Instance);
     }
 
     public void Dispose() => _dbContext.Dispose();

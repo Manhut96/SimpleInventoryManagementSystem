@@ -8,8 +8,8 @@ namespace SimpleInventoryManagementSystem.Application.Contracts.Requests;
 /// <param name="Price">Unit price in USD. Must be greater than 0.</param>
 /// <param name="Stock">Initial stock quantity. Must be 0 or greater.</param>
 public record CreateProductRequest(
-    [property: Required, MaxLength(50)] string Name,
-    [property: Required, MaxLength(50)] string Description,
-    [property: Required, Range(0.01, double.MaxValue)] decimal Price,
-    [property: Required, Range(0, int.MaxValue)] int Stock
+    [Required, MaxLength(50)] string Name,
+    [Required, MaxLength(50)] string Description,
+    [Required, Range(0.01, double.MaxValue)] decimal Price,
+    [Required, Range(0, int.MaxValue)] int Stock
 );

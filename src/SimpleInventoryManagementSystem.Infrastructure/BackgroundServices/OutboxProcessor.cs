@@ -13,6 +13,12 @@ public sealed class OutboxProcessor(
     IServiceScopeFactory scopeFactory,
     ILogger<OutboxProcessor> logger) : BackgroundService
 {
+    public override async Task StartAsync(CancellationToken cancellationToken)
+    {
+        logger.LogInformation("OutboxProcessor starting");
+        await base.StartAsync(cancellationToken);
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -35,6 +41,11 @@ public sealed class OutboxProcessor(
                 .Where(e => e.ProcessedAt == null)
                 .ToListAsync(stoppingToken);
 
+            if (unprocessed.Count == 0)
+                return;
+
+            logger.LogInformation("Processing {Count} outbox event(s)", unprocessed.Count);
+
             foreach (var outboxEvent in unprocessed)
             {
                 var domainEvent = new OutboxDomainEvent(outboxEvent.EventType, outboxEvent.Payload, dateTimeProvider.UtcNow);
@@ -43,6 +54,7 @@ public sealed class OutboxProcessor(
             }
 
             await db.SaveChangesAsync(stoppingToken);
+            logger.LogInformation("Processed {Count} outbox event(s) successfully", unprocessed.Count);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

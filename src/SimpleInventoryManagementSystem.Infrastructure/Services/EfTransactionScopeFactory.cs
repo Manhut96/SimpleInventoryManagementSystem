@@ -15,6 +15,7 @@ public sealed class EfTransactionScopeFactory(SIMSDbContext dbContext) : ITransa
     private sealed class EfTransactionScope(IDbContextTransaction dbContextTransaction) : ITransactionScope
     {
         public Task CommitAsync(CancellationToken cancellationToken) => dbContextTransaction.CommitAsync(cancellationToken);
+        public Task RollbackAsync(CancellationToken cancellationToken) => dbContextTransaction.RollbackAsync(cancellationToken);
         public ValueTask DisposeAsync() => dbContextTransaction.DisposeAsync();
     }
 }

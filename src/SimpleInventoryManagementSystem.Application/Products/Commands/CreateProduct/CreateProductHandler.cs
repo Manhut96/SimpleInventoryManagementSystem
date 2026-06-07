@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SimpleInventoryManagementSystem.Application.Common;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Contracts.Responses;
@@ -10,8 +11,9 @@ namespace SimpleInventoryManagementSystem.Application.Products.Commands.CreatePr
 public sealed class CreateProductHandler(
     ITransactionScopeFactory transactionScopeFactory,
     ISIMSDbContext dbContext,
-    IDateTimeProvider dateTimeProvider)
-    : TransactionalHandler<CreateProductCommand, ProductDto>(transactionScopeFactory, dbContext, dateTimeProvider)
+    IDateTimeProvider dateTimeProvider,
+    ILoggerFactory loggerFactory)
+    : TransactionalHandlerBase<CreateProductCommand, ProductDto>(transactionScopeFactory, dbContext, dateTimeProvider, loggerFactory)
 {
     protected override Task<ProductDto> HandleCoreAsync(CreateProductCommand request, CancellationToken cancellationToken)
     {

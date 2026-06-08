@@ -11,4 +11,5 @@ public interface ISIMSDbContext
     DbSet<OutboxEventEntity> OutboxEvents { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+    Task<List<ProductEntity>> GetProductsForUpdateAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken);
 }

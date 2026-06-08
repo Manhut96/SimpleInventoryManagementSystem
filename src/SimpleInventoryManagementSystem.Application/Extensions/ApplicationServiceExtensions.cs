@@ -2,8 +2,6 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleInventoryManagementSystem.Application.Common.Behaviors;
-using SimpleInventoryManagementSystem.Application.Orders;
-using SimpleInventoryManagementSystem.Application.Products;
 
 namespace SimpleInventoryManagementSystem.Application.Extensions;
 
@@ -14,8 +12,6 @@ public static class ApplicationServiceExtensions
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(IAssemblyMarker).Assembly));
         services.AddValidatorsFromAssemblyContaining<IAssemblyMarker>();
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-        services.AddProductsFeature();
-        services.AddOrdersFeature();
 
         return services;
     }

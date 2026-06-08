@@ -15,7 +15,7 @@ public sealed class PricingCalculatorServiceTests
     {
         _dateTimeProvider.UtcNow.Returns(orderDate);
         return new PricingCalculatorService(
-            [new VolumeDiscountStrategy(), new BlackFridayDiscountStrategy(), new HolidaySaleDiscountStrategy()],
+            [new VolumeDiscountStrategy(new VolumeDiscountOptions()), new BlackFridayDiscountStrategy(), new HolidaySaleDiscountStrategy()],
             _dateTimeProvider);
     }
 

@@ -22,9 +22,11 @@ public sealed class ProductsEndpointTests : IClassFixture<CustomWebApplicationFa
         var response = await _client.GetAsync("/products");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var products = await response.Content.ReadFromJsonAsync<List<ProductDto>>(JsonOptions);
-        products.Should().NotBeNull();
-        products!.Count.Should().BeGreaterThanOrEqualTo(5);
+        var paged = await response.Content.ReadFromJsonAsync<PagedResult<ProductDto>>(JsonOptions);
+        paged.Should().NotBeNull();
+        paged!.Items.Count.Should().BeGreaterThanOrEqualTo(5);
+        paged.PageNumber.Should().Be(1);
+        paged.PageSize.Should().Be(20);
     }
 
     [Fact]

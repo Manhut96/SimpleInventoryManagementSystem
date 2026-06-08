@@ -123,4 +123,16 @@ public sealed class CreateOrderHandlerTests : IDisposable
                 CancellationToken.None))
             .Should().ThrowAsync<ProductNotFoundException>();
     }
+
+    [Fact]
+    public async Task Handle_InsufficientStock_ThrowsInsufficientStockException()
+    {
+        var (customer, product) = await SeedAsync(stock: 2);
+        SetupPricing(product.Id, 100, 10m, 10m);
+
+        await _sut.Invoking(h => h.Handle(
+                new CreateOrderCommand(customer.Id, [new OrderItemRequest(product.Id, 100)]),
+                CancellationToken.None))
+            .Should().ThrowAsync<InsufficientStockException>();
+    }
 }

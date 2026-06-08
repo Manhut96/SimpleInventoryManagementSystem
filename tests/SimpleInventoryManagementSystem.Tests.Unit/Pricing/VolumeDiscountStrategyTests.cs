@@ -6,7 +6,7 @@ namespace SimpleInventoryManagementSystem.Tests.Unit.Pricing;
 
 public sealed class VolumeDiscountStrategyTests
 {
-    private readonly VolumeDiscountStrategy _sut = new();
+    private readonly VolumeDiscountStrategy _sut = new(new VolumeDiscountOptions());
 
     private static PricingContext ContextWithQuantity(int totalQuantity)
         => new([new OrderLineItem(Guid.NewGuid(), totalQuantity, 10m)], DateTimeOffset.UtcNow);

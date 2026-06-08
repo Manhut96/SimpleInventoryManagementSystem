@@ -4,23 +4,20 @@ public sealed class BlackFridayDiscountStrategy : IDiscountStrategy
 {
     public decimal? TryGetDiscount(PricingContext context)
     {
-        var orderDate = context.OrderDate;
-
-        if (orderDate.Month != 11)
-            return null;
-
-        if (!IsLastFridayOfNovember(orderDate))
-            return null;
-
-        return 0.25m;
+        return IsBlackFriday(context.OrderDate) ? 0.25m : null;
     }
 
-    private static bool IsLastFridayOfNovember(DateTimeOffset date)
+    private static bool IsBlackFriday(DateTimeOffset date)
     {
-        if (date.DayOfWeek != DayOfWeek.Friday)
+        if (date.Month != 11 || date.DayOfWeek != DayOfWeek.Friday)
             return false;
 
-        // It's the last Friday if adding 7 days would fall in December
-        return date.AddDays(7).Month == 12;
+        // Find first Thursday in November, add 21 days (+3 weeks) = 4th Thursday, +1 day = Black Friday
+        var firstThursday = new DateTimeOffset(date.Year, 11, 1, 0, 0, 0, date.Offset);
+        while (firstThursday.DayOfWeek != DayOfWeek.Thursday)
+            firstThursday = firstThursday.AddDays(1);
+        var blackFriday = firstThursday.AddDays(22);
+
+        return date.Date == blackFriday.Date;
     }
 }

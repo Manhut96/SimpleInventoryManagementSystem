@@ -49,10 +49,14 @@ Domain events are serialized to JSON and written to `events.tbl_outbox` in the s
 
 A dedicated Audit microservice subscribing to domain events is the natural next evolution step in a full EDA setup. It is not implemented here.
 
-## 14. Data Annotations for Documentation Only
+## 13. Data Annotations for Documentation Only
 
 Request records carry Data Annotations (`[Required]`, `[MaxLength]`, `[Range]`, `[MinLength]`) so that Scalar renders field-level constraints (maxLength, minimum, minItems, required) directly in the UI. `ApiBehaviorOptions.SuppressModelStateInvalidFilter = true` is set in `Program.cs` so these annotations never trigger the built-in ASP.NET Core model-state 400 filter. All actual validation remains in the FluentValidation pipeline (see note #3), keeping RFC 9457 ProblemDetails format consistent.
 
-## 13. Contracts in Application Layer
+## 14. Contracts in Application Layer
 
 Request/response records live in `Application/Contracts/`. No separate Contracts project is needed because all consumers (Infrastructure, API, Tests) already reference Application.
+
+## 15. Pessimistic Locking on Stock Deduction
+
+Products are loaded with `SELECT ... FOR UPDATE` (raw SQL via Npgsql) inside the existing EF Core transaction opened by `TransactionalHandlerBase`. This serializes concurrent stock deductions at the DB row level, preventing negative stock without application-level retry logic.

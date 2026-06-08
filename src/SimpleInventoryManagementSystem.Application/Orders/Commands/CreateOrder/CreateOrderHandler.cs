@@ -29,7 +29,7 @@ public sealed class CreateOrderHandler(
         var rawItems = BuildRawLineItems(request.Items, products);
         var pricedItems = pricingCalculator.Calculate(rawItems, customer.Location);
         DeductStock(request.Items, products);
-        var order = CreateOrder(request.CustomerId, pricedItems);
+        var order = CreateOrder(request.CustomerId, pricedItems, DateTimeProvider.UtcNow);
         DbContext.Orders.Add(order);
         WriteEvent(new OrderCreatedEvent(order.Id, order.CustomerId, order.TotalAmount, DateTimeProvider.UtcNow));
         return MapToDto(order);
@@ -52,9 +52,8 @@ public sealed class CreateOrderHandler(
     {
         var productIds = items.Select(i => i.ProductId).ToList();
 
-        var products = await DbContext.Products
-            .Where(p => productIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, cancellationToken);
+        var products = (await DbContext.GetProductsForUpdateAsync(productIds, cancellationToken))
+            .ToDictionary(p => p.Id);
 
         foreach (var productId in productIds)
         {
@@ -80,11 +79,14 @@ public sealed class CreateOrderHandler(
             products[item.ProductId].DeductStock(item.Quantity);
     }
 
-    private static OrderEntity CreateOrder(Guid customerId, IReadOnlyList<PricedOrderLineItem> pricedItems)
+    private static OrderEntity CreateOrder(
+        Guid customerId,
+        IReadOnlyList<PricedOrderLineItem> pricedItems,
+        DateTimeOffset placedAt)
     {
         var orderItems = BuildOrderItems(pricedItems);
         var totalAmount = pricedItems.Sum(p => p.FinalUnitPrice * p.Quantity);
-        return OrderEntity.Create(customerId, orderItems, totalAmount, DateTimeOffset.UtcNow);
+        return OrderEntity.Create(customerId, orderItems, totalAmount, placedAt);
     }
 
     private static IReadOnlyList<OrderItem> BuildOrderItems(IReadOnlyList<PricedOrderLineItem> pricedItems)

@@ -20,5 +20,6 @@ public class OrderConfiguration : IEntityTypeConfiguration<OrderEntity>
             itemBuilder.Property(i => i.FinalUnitPrice).HasColumnType("decimal(18,2)");
         });
         builder.Navigation(o => o.Items).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.HasIndex(o => o.CustomerId);
     }
 }

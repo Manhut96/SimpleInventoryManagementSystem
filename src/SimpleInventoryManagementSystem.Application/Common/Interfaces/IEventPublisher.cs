@@ -4,5 +4,5 @@ namespace SimpleInventoryManagementSystem.Application.Common.Interfaces;
 
 public interface IEventPublisher
 {
-    Task PublishAsync(DomainEvent domainEvent, CancellationToken ct = default);
+    Task PublishAsync(DomainEvent domainEvent, CancellationToken cancellationToken = default);
 }

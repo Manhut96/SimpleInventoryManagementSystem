@@ -11,12 +11,12 @@ namespace SimpleInventoryManagementSystem.API.Controllers;
 [Route("[controller]")]
 public class ProductsController(IMediator mediator) : ControllerBase
 {
-    /// <summary>Returns all products in the catalog.</summary>
+    /// <summary>Returns a paginated list of products in the catalog.</summary>
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<ProductDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetProducts()
+    [ProducesResponseType<PagedResult<ProductDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetProducts([FromQuery] GetProductsQuery query)
     {
-        var result = await mediator.Send(new GetProductsQuery());
+        var result = await mediator.Send(query);
         return Ok(result);
     }
 

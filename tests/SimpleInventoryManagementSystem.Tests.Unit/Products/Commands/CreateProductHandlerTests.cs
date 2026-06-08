@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
 using SimpleInventoryManagementSystem.Application.Products.Commands.CreateProduct;
+using SimpleInventoryManagementSystem.Domain.Entities;
 using SimpleInventoryManagementSystem.Domain.Interfaces;
 using SimpleInventoryManagementSystem.Tests.Unit.Infrastructure;
 
@@ -12,6 +13,7 @@ namespace SimpleInventoryManagementSystem.Tests.Unit.Products.Commands;
 public sealed class CreateProductHandlerTests : IDisposable
 {
     private readonly TestSIMSDbContext _dbContext;
+    private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
     private readonly CreateProductHandler _sut;
 
     public CreateProductHandlerTests()
@@ -20,7 +22,7 @@ public sealed class CreateProductHandlerTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TestSIMSDbContext(options);
-        _sut = new CreateProductHandler(NoOpFactory(), _dbContext, NoOpDateTimeProvider(), NullLoggerFactory.Instance);
+        _sut = new CreateProductHandler(NoOpFactory(), _dbContext, _productRepository, NoOpDateTimeProvider(), NullLoggerFactory.Instance);
     }
 
     public void Dispose() => _dbContext.Dispose();
@@ -43,17 +45,17 @@ public sealed class CreateProductHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ShouldAddProductToDbContext()
+    public async Task Handle_ValidCommand_ShouldAddProductViaRepository()
     {
         var command = new CreateProductCommand("Coffee Mug", "A nice mug", 9.99m, 10);
 
         await _sut.Handle(command, CancellationToken.None);
 
-        _dbContext.Products.Local.Should().ContainSingle(p =>
+        _productRepository.Received(1).Add(Arg.Is<ProductEntity>(p =>
             p.Name == command.Name &&
             p.Description == command.Description &&
             p.Price == command.Price &&
-            p.Stock == command.InitialStock);
+            p.Stock == command.InitialStock));
     }
 
     [Fact]

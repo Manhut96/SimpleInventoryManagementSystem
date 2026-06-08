@@ -60,3 +60,11 @@ Request/response records live in `Application/Contracts/`. No separate Contracts
 ## 15. Pessimistic Locking on Stock Deduction
 
 Products are loaded with `SELECT ... FOR UPDATE` (raw SQL via Npgsql) inside the existing EF Core transaction opened by `TransactionalHandlerBase`. This serializes concurrent stock deductions at the DB row level, preventing negative stock without application-level retry logic.
+
+## 16. Repository Layer for ORM Replaceability
+
+A thin repository layer (`IProductRepository`, `ICustomerRepository`, `IOrderRepository`) was introduced so that EF Core–specific constructs (LINQ, `AsNoTracking`, pessimistic-lock raw SQL) are contained entirely in Infrastructure. Application handlers depend only on the interfaces. This makes swapping the ORM a matter of replacing repository implementations, not touching handler logic.
+
+## 17. Secret Management
+
+Sensitive values (connection strings, passwords) are stored in `appsettings.json` / `appsettings.Development.json` for the convenience of this recruitment task only. In production these should be managed via a dedicated secret store (e.g. Azure Key Vault with Managed Identity, AWS Secrets Manager, or HashiCorp Vault) and never committed to source control.

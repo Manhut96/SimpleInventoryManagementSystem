@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimpleInventoryManagementSystem.Application.Common;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
@@ -17,6 +16,9 @@ namespace SimpleInventoryManagementSystem.Application.Orders.Commands.CreateOrde
 public sealed class CreateOrderHandler(
     ITransactionScopeFactory transactionScopeFactory,
     ISIMSDbContext dbContext,
+    IProductRepository productRepository,
+    ICustomerRepository customerRepository,
+    IOrderRepository orderRepository,
     IDateTimeProvider dateTimeProvider,
     IPricingCalculatorService pricingCalculator,
     ILoggerFactory loggerFactory)
@@ -30,15 +32,14 @@ public sealed class CreateOrderHandler(
         var pricedItems = pricingCalculator.Calculate(rawItems, customer.Location);
         DeductStock(request.Items, products);
         var order = CreateOrder(request.CustomerId, pricedItems, DateTimeProvider.UtcNow);
-        DbContext.Orders.Add(order);
+        orderRepository.Add(order);
         WriteEvent(new OrderCreatedEvent(order.Id, order.CustomerId, order.TotalAmount, DateTimeProvider.UtcNow));
         return MapToDto(order);
     }
 
     private async Task<CustomerEntity> LoadCustomerAsync(Guid customerId, CancellationToken cancellationToken)
     {
-        var customer = await DbContext.Customers
-            .FirstOrDefaultAsync(c => c.Id == customerId, cancellationToken);
+        var customer = await customerRepository.GetByIdAsync(customerId, cancellationToken);
 
         if (customer is null)
             throw new CustomerNotFoundException(customerId);
@@ -52,7 +53,7 @@ public sealed class CreateOrderHandler(
     {
         var productIds = items.Select(i => i.ProductId).ToList();
 
-        var products = (await DbContext.GetProductsForUpdateAsync(productIds, cancellationToken))
+        var products = (await productRepository.GetForUpdateAsync(productIds, cancellationToken))
             .ToDictionary(p => p.Id);
 
         foreach (var productId in productIds)

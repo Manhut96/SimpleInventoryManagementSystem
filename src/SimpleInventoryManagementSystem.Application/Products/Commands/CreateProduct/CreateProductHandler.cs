@@ -11,6 +11,7 @@ namespace SimpleInventoryManagementSystem.Application.Products.Commands.CreatePr
 public sealed class CreateProductHandler(
     ITransactionScopeFactory transactionScopeFactory,
     ISIMSDbContext dbContext,
+    IProductRepository productRepository,
     IDateTimeProvider dateTimeProvider,
     ILoggerFactory loggerFactory)
     : TransactionalHandlerBase<CreateProductCommand, ProductDto>(transactionScopeFactory, dbContext, dateTimeProvider, loggerFactory)
@@ -18,7 +19,7 @@ public sealed class CreateProductHandler(
     protected override Task<ProductDto> HandleCoreAsync(CreateProductCommand request, CancellationToken cancellationToken)
     {
         var product = ProductEntity.Create(request.Name, request.Description, request.Price, request.InitialStock);
-        DbContext.Products.Add(product);
+        productRepository.Add(product);
         WriteEvent(new ProductCreatedEvent(product.Id, product.Name, product.Price, product.Stock, DateTimeProvider.UtcNow));
         return Task.FromResult(new ProductDto(product.Id, product.Name, product.Description, product.Price, product.Stock));
     }

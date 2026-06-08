@@ -55,10 +55,6 @@ Key constraints to keep top of mind:
 - The discount date must flow through `IDateTimeProvider` — never `DateTime.Now` directly.
 - A `NOTES.md` file covering assumptions and trade-offs must be included in the deliverable.
 
-## Implementation Plan
-
-`.claude/plans/task-plan.md` — 19 phases, each = one logical commit.
-
 ## Architectural Decisions & Change Log
 
 `.claude/knowledge/` — see files there for specific decisions, gotchas, and deviations from the plan.

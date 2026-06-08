@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleInventoryManagementSystem.Application.Common.Interfaces;
+using SimpleInventoryManagementSystem.Infrastructure.Persistence.Repositories;
 using SimpleInventoryManagementSystem.Infrastructure.Services;
 
 namespace SimpleInventoryManagementSystem.Infrastructure.Persistence;
@@ -15,6 +16,10 @@ public static class RegistrationExtensions
 
         services.AddScoped<ISIMSDbContext>(provider => provider.GetRequiredService<SIMSDbContext>());
         services.AddScoped<ITransactionScopeFactory, EfTransactionScopeFactory>();
+
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
 
         return services;
     }

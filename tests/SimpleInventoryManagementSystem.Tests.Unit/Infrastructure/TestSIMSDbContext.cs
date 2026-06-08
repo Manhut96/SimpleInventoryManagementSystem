@@ -14,10 +14,6 @@ public sealed class TestSIMSDbContext : DbContext, ISIMSDbContext
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
     public DbSet<OutboxEventEntity> OutboxEvents => Set<OutboxEventEntity>();
 
-    public Task<List<ProductEntity>> GetProductsForUpdateAsync(
-        IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
-        => Products.Where(p => ids.Contains(p.Id)).ToListAsync(cancellationToken);
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<OrderEntity>(order =>

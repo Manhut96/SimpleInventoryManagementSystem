@@ -18,6 +18,9 @@ namespace SimpleInventoryManagementSystem.Tests.Unit.Orders.Commands;
 public sealed class CreateOrderHandlerTests : IDisposable
 {
     private readonly TestSIMSDbContext _dbContext;
+    private readonly IProductRepository _productRepository = Substitute.For<IProductRepository>();
+    private readonly ICustomerRepository _customerRepository = Substitute.For<ICustomerRepository>();
+    private readonly IOrderRepository _orderRepository = Substitute.For<IOrderRepository>();
     private readonly IPricingCalculatorService _pricingCalculator = Substitute.For<IPricingCalculatorService>();
     private readonly CreateOrderHandler _sut;
 
@@ -27,7 +30,9 @@ public sealed class CreateOrderHandlerTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new TestSIMSDbContext(options);
-        _sut = new CreateOrderHandler(NoOpFactory(), _dbContext, NoOpDateTimeProvider(), _pricingCalculator, NullLoggerFactory.Instance);
+        _sut = new CreateOrderHandler(
+            NoOpFactory(), _dbContext, _productRepository, _customerRepository, _orderRepository,
+            NoOpDateTimeProvider(), _pricingCalculator, NullLoggerFactory.Instance);
     }
 
     public void Dispose() => _dbContext.Dispose();
@@ -49,27 +54,30 @@ public sealed class CreateOrderHandlerTests : IDisposable
         return dateTimeProvider;
     }
 
-    private async Task<(CustomerEntity customer, ProductEntity product)> SeedAsync(decimal price = 10m, int stock = 100)
-    {
-        var customer = CustomerEntity.Create("Test Customer", "test@test.com", Location.Europe);
-        var product = ProductEntity.Create("Product", "Description", price, stock);
-        _dbContext.Customers.Add(customer);
-        _dbContext.Products.Add(product);
-        await _dbContext.SaveChangesAsync();
-        return (customer, product);
-    }
+    private static CustomerEntity CreateCustomer()
+        => CustomerEntity.Create("Test Customer", "test@test.com", Location.Europe);
+
+    private static ProductEntity CreateProduct(decimal price = 10m, int stock = 100)
+        => ProductEntity.Create("Product", "Description", price, stock);
+
+    private void SetupCustomer(CustomerEntity customer)
+        => _customerRepository.GetByIdAsync(customer.Id, Arg.Any<CancellationToken>()).Returns(customer);
+
+    private void SetupProducts(List<ProductEntity> products)
+        => _productRepository.GetForUpdateAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>()).Returns(products);
 
     private void SetupPricing(Guid productId, int quantity, decimal unitPrice, decimal finalUnitPrice)
-    {
-        _pricingCalculator
+        => _pricingCalculator
             .Calculate(Arg.Any<IReadOnlyList<OrderLineItem>>(), Arg.Any<Location>())
             .Returns([new PricedOrderLineItem(productId, quantity, unitPrice, finalUnitPrice)]);
-    }
 
     [Fact]
     public async Task Handle_ValidCommand_ShouldDeductStockFromProduct()
     {
-        var (customer, product) = await SeedAsync(stock: 5);
+        var customer = CreateCustomer();
+        var product = CreateProduct(stock: 5);
+        SetupCustomer(customer);
+        SetupProducts([product]);
         SetupPricing(product.Id, 2, 10m, 10m);
 
         await _sut.Handle(new CreateOrderCommand(customer.Id, [new OrderItemRequest(product.Id, 2)]), CancellationToken.None);
@@ -80,7 +88,10 @@ public sealed class CreateOrderHandlerTests : IDisposable
     [Fact]
     public async Task Handle_ValidCommand_ShouldStageOrderCreatedEventInOutbox()
     {
-        var (customer, product) = await SeedAsync(stock: 10);
+        var customer = CreateCustomer();
+        var product = CreateProduct(stock: 10);
+        SetupCustomer(customer);
+        SetupProducts([product]);
         SetupPricing(product.Id, 2, 10m, 8m);
 
         await _sut.Handle(new CreateOrderCommand(customer.Id, [new OrderItemRequest(product.Id, 2)]), CancellationToken.None);
@@ -91,7 +102,10 @@ public sealed class CreateOrderHandlerTests : IDisposable
     [Fact]
     public async Task Handle_ValidCommand_ShouldReturnOrderDtoWithCorrectTotalAmount()
     {
-        var (customer, product) = await SeedAsync(price: 20m, stock: 10);
+        var customer = CreateCustomer();
+        var product = CreateProduct(price: 20m, stock: 10);
+        SetupCustomer(customer);
+        SetupProducts([product]);
         SetupPricing(product.Id, 3, 20m, 18m);
 
         var result = await _sut.Handle(new CreateOrderCommand(customer.Id, [new OrderItemRequest(product.Id, 3)]), CancellationToken.None);
@@ -116,7 +130,9 @@ public sealed class CreateOrderHandlerTests : IDisposable
     [Fact]
     public async Task Handle_ProductNotFound_ShouldThrowProductNotFoundException()
     {
-        var (customer, _) = await SeedAsync();
+        var customer = CreateCustomer();
+        SetupCustomer(customer);
+        SetupProducts([]);
 
         await _sut.Invoking(h => h.Handle(
                 new CreateOrderCommand(customer.Id, [new OrderItemRequest(Guid.NewGuid(), 1)]),
@@ -127,8 +143,10 @@ public sealed class CreateOrderHandlerTests : IDisposable
     [Fact]
     public async Task Handle_InsufficientStock_ThrowsInsufficientStockException()
     {
-        var (customer, product) = await SeedAsync(stock: 2);
-        SetupPricing(product.Id, 100, 10m, 10m);
+        var customer = CreateCustomer();
+        var product = CreateProduct(stock: 2);
+        SetupCustomer(customer);
+        SetupProducts([product]);
 
         await _sut.Invoking(h => h.Handle(
                 new CreateOrderCommand(customer.Id, [new OrderItemRequest(product.Id, 100)]),

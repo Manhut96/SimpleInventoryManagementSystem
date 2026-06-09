@@ -39,7 +39,7 @@ Location adjustments (US: ×1.0, Europe: ×1.15, Asia: ×1.05) are applied after
 
 ## 10. Outbox Pattern for Domain Events
 
-Domain events are serialized to JSON and written to `events.tbl_outbox` in the same `SaveChangesAsync` call as the business entities, solving the dual-write problem. `OutboxProcessor` (IHostedService) polls unprocessed rows every 5 seconds and calls `IEventPublisher`. In production, `IEventPublisher` would publish to RabbitMQ or Azure Service Bus. This decouples event publishing from the HTTP request lifecycle.
+Domain events are serialized to JSON and written to `events.tbl_outbox` in the same `SaveChangesAsync` call as the business entities, solving the dual-write problem. `OutboxProcessor` (IHostedService) polls unprocessed rows with exponential backoff (5 s when events are found, doubling up to 60 s when idle) and calls `IEventPublisher`. In production, `IEventPublisher` would publish to RabbitMQ or Azure Service Bus. This decouples event publishing from the HTTP request lifecycle.
 
 ## 11. Schema Separation Mirrors Bounded Contexts
 
@@ -72,3 +72,7 @@ Sensitive values (connection strings, passwords) are stored in `appsettings.json
 ## 18. One Line Item Per Product Per Order
 
 `OrderItem` is modelled as a Value Object owned by `OrderEntity` and persisted via EF Core `OwnsMany`. The composite primary key `(OrderId, ProductId)` means each product can appear at most once per order.
+
+## 19. Pagination on GET /products
+
+The spec requires "a list of all products" without specifying pagination. A `PagedResult<ProductDto>` response with `pageNumber` / `pageSize` query parameters (defaults: 1 / 20) was added to avoid unbounded result sets in production. The response envelope includes `totalCount`, `pageNumber`, and `pageSize`.

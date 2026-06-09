@@ -25,10 +25,10 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<SIMSDbContext>();
-    await db.Database.MigrateAsync();
+    var dbContext = scope.ServiceProvider.GetRequiredService<SIMSDbContext>();
+    await dbContext.Database.MigrateAsync();
     var seederLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(DataSeeder));
-    await DataSeeder.SeedAsync(db, seederLogger);
+    await DataSeeder.SeedAsync(dbContext, seederLogger);
 }
 
 app.UseMiddleware<ExceptionHandlerMiddleware>();

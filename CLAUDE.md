@@ -21,7 +21,7 @@ References: Domain ← Application ← Infrastructure ← API; Tests.Unit → Do
 
 - .NET 10, C# 13, `[ApiController]` controllers, camelCase JSON
 - EF Core + Npgsql + PostgreSQL (3 schemas: `catalog`, `ordering`, `events`)
-- MediatR 12 + FluentValidation pipeline behavior
+- MediatR 14 + FluentValidation pipeline behavior
 - Serilog → Console (structured)
 - Scalar UI (`/scalar/v1`), RFC 9457 ProblemDetails
 - xUnit + FluentAssertions + NSubstitute; integration via `WebApplicationFactory` + Testcontainers
@@ -39,11 +39,11 @@ References: Domain ← Application ← Infrastructure ← API; Tests.Unit → Do
 - **`public partial class Program {}`** at bottom of `Program.cs` — required for integration tests.
 - Routes: no `/api` prefix — `[Route("[controller]")]` only.
 - **No anonymous tuples in public APIs** — always extract `(...)` tuples into named records in dedicated files. Tuples are allowed only as local variables inside method bodies.
-- **Helper/auxiliary records** (data carriers, structured results, input/output shapes) live in a `Models/` subfolder nested under the feature folder they belong to (e.g. `Domain/Discounts/Models/OrderLineItem.cs`).
-- **`var` everywhere** — use `var` for all local variable declarations where the compiler can infer the type, including simple numeric literals (`var count = 5`, `var price = 9.99m`). Only omit `var` when the type cannot be inferred or explicit declaration is required by the language.
-- **No abbreviated names** — use full descriptive names for all variables, parameters, and properties: `dbContext` not `db`, `dateTimeProvider` not `dt`, `transaction` not `tx`, `cancellationToken` not `ct`, `domainEvent` not `e`. Single-letter LINQ lambda parameters (`.Where(p => ...)`, `.Select(i => ...)`) and conventional loop indices (`i`, `j`) are exempt.
-- **Extract private methods** — split longer logic in handlers and services into small, well-named `private` methods. Each method should do one thing and read like a sentence. Prefer many short private methods over one long public method. **Do NOT extract trivial one-liner wrappers** that just delegate to another method with the same arguments (e.g. `CreateProduct` that only calls `Product.Create(request.Name, ...)`, or `ComputeTotal` that only calls `.Sum(...)`). Extract only when the body contains real logic, multiple steps, branching, or a complex expression worth naming (multi-argument factory + LINQ chain, event construction with computed values, etc.).
-- **Per-feature `RegistrationExtensions.cs`** — every feature folder in Application/Infrastructure gets its own `RegistrationExtensions.cs` with a single `static` extension method on `IServiceCollection` that registers that feature's services (e.g. `AddPricingServices()`, `AddPersistence(config)`). Domain stays pure (no DI package). Top-level `ApplicationServiceExtensions` / `InfrastructureServiceExtensions` just chain-call the per-feature methods.
+- **Helper/auxiliary records** (data carriers, structured results, input/output shapes) live in a `Models/` subfolder nested under the feature folder they belong to (e.g. `Domain/Pricing/Models/OrderLineItem.cs`).
+- **`var` everywhere** — use `var` for all local variable declarations where the compiler can infer the type; omit only when explicit declaration is required by the language.
+- **No abbreviated names** — full descriptive names: `dbContext` not `db`, `dateTimeProvider` not `dt`, `transaction` not `tx`, `cancellationToken` not `ct`, `domainEvent` not `e`. Single-letter LINQ lambda parameters (`.Where(p => ...)`) and loop indices (`i`, `j`) are exempt.
+- **Extract private methods** — split longer logic into small, well-named `private` methods; each should do one thing and read like a sentence. Do NOT extract trivial one-liners that just delegate to another method with the same arguments — extract only when the body contains real logic, multiple steps, or branching.
+- **Per-feature `RegistrationExtensions.cs`** — each Infrastructure feature folder (Persistence, Pricing, Events) has its own `RegistrationExtensions.cs` with a single extension method (e.g. `AddPricingServices()`, `AddPersistence(config)`); `InfrastructureServiceExtensions` chains them. Application uses a single top-level `ApplicationServiceExtensions`. Domain stays pure (no DI package).
 
 ## Recruitment Task Requirements
 

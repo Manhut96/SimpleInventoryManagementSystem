@@ -4,4 +4,4 @@ using SimpleInventoryManagementSystem.Application.Contracts.Responses;
 
 namespace SimpleInventoryManagementSystem.Application.Orders.Commands.CreateOrder;
 
-public record CreateOrderCommand(Guid CustomerId, IReadOnlyList<OrderItemRequest> Items) : IRequest<OrderDto>;
+public record CreateOrderCommand(Guid CustomerId, IReadOnlyList<OrderItemRequest> Products) : IRequest<OrderDto>;

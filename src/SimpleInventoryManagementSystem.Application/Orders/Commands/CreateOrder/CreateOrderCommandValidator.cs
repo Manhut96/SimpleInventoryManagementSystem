@@ -10,10 +10,10 @@ public sealed class CreateOrderCommandValidator : AbstractValidator<CreateOrderC
         RuleFor(x => x.CustomerId)
             .NotEmpty();
 
-        RuleFor(x => x.Items)
+        RuleFor(x => x.Products)
             .NotEmpty();
 
-        RuleForEach(x => x.Items)
+        RuleForEach(x => x.Products)
             .ChildRules(item =>
             {
                 item.RuleFor(x => x.ProductId)

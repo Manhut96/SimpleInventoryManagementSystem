@@ -11,8 +11,10 @@ public sealed class OrdersEndpointTests : IClassFixture<CustomWebApplicationFact
     private readonly HttpClient _client;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    // Fixed GUIDs from DataSeeder — Alice is US (location multiplier 1.0x)
-    private static readonly Guid AliceId = new("11111111-0000-0000-0000-000000000001");
+    // Fixed GUIDs from DataSeeder
+    private static readonly Guid AliceId = new("11111111-0000-0000-0000-000000000001"); // US  (×1.00)
+    private static readonly Guid BobId   = new("22222222-0000-0000-0000-000000000002"); // EU  (×1.15)
+    private static readonly Guid CarolId = new("33333333-0000-0000-0000-000000000003"); // Asia (×1.05)
 
     public OrdersEndpointTests(CustomWebApplicationFactory factory)
     {
@@ -35,7 +37,7 @@ public sealed class OrdersEndpointTests : IClassFixture<CustomWebApplicationFact
         var body = new
         {
             customerId = AliceId,
-            items = new[] { new { productId, quantity = 1 } }
+            products = new[] { new { productId, quantity = 1 } }
         };
 
         var response = await _client.PostAsJsonAsync("/orders", body);
@@ -56,7 +58,7 @@ public sealed class OrdersEndpointTests : IClassFixture<CustomWebApplicationFact
         var body = new
         {
             customerId = Guid.NewGuid(),
-            items = new[] { new { productId, quantity = 1 } }
+            products = new[] { new { productId, quantity = 1 } }
         };
 
         var response = await _client.PostAsJsonAsync("/orders", body);
@@ -71,7 +73,7 @@ public sealed class OrdersEndpointTests : IClassFixture<CustomWebApplicationFact
         var body = new
         {
             customerId = AliceId,
-            items = new[] { new { productId, quantity = 100 } }
+            products = new[] { new { productId, quantity = 100 } }
         };
 
         var response = await _client.PostAsJsonAsync("/orders", body);
@@ -82,13 +84,12 @@ public sealed class OrdersEndpointTests : IClassFixture<CustomWebApplicationFact
     [Fact]
     public async Task PostOrders_Qty5_Returns201WithVolumeDiscountApplied()
     {
-        // Volume savings ($10*5*0.10=$5) > max holiday savings ($10*0.15=$1.50)
-        // Volume discount always wins regardless of the current date
+        // Fixed date 2024-06-15 (no BF, no holiday) → volume savings ($5) > no other discount
         var productId = await CreateProductAsync(stock: 100, price: 10m);
         var body = new
         {
             customerId = AliceId,
-            items = new[] { new { productId, quantity = 5 } }
+            products = new[] { new { productId, quantity = 5 } }
         };
 
         var response = await _client.PostAsJsonAsync("/orders", body);
@@ -99,5 +100,47 @@ public sealed class OrdersEndpointTests : IClassFixture<CustomWebApplicationFact
         // 10% volume discount on $10 = $9/unit; US location 1.0x; 5 * $9 = $45
         order!.TotalAmount.Should().Be(45m);
         order.Items[0].FinalUnitPrice.Should().Be(9m);
+    }
+
+    [Fact]
+    public async Task PostOrders_EuropeCustomer_Returns201WithVatMultiplierApplied()
+    {
+        // Bob is Europe (×1.15). qty=5 → 10% volume discount then ×1.15 VAT.
+        // $10 × 0.9 × 1.15 = $10.35/unit; total = $51.75
+        var productId = await CreateProductAsync(stock: 100, price: 10m);
+        var body = new
+        {
+            customerId = BobId,
+            products = new[] { new { productId, quantity = 5 } }
+        };
+
+        var response = await _client.PostAsJsonAsync("/orders", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var order = await response.Content.ReadFromJsonAsync<OrderDto>(JsonOptions);
+        order.Should().NotBeNull();
+        order!.TotalAmount.Should().Be(51.75m);
+        order.Items[0].FinalUnitPrice.Should().Be(10.35m);
+    }
+
+    [Fact]
+    public async Task PostOrders_AsiaCustomer_Returns201WithLogisticsMultiplierApplied()
+    {
+        // Carol is Asia (×1.05). qty=5 → 10% volume discount then ×1.05 logistics.
+        // $10 × 0.9 × 1.05 = $9.45/unit; total = $47.25
+        var productId = await CreateProductAsync(stock: 100, price: 10m);
+        var body = new
+        {
+            customerId = CarolId,
+            products = new[] { new { productId, quantity = 5 } }
+        };
+
+        var response = await _client.PostAsJsonAsync("/orders", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var order = await response.Content.ReadFromJsonAsync<OrderDto>(JsonOptions);
+        order.Should().NotBeNull();
+        order!.TotalAmount.Should().Be(47.25m);
+        order.Items[0].FinalUnitPrice.Should().Be(9.45m);
     }
 }

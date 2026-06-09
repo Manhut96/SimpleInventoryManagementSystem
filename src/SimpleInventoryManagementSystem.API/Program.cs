@@ -27,12 +27,14 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SIMSDbContext>();
     await db.Database.MigrateAsync();
-    await DataSeeder.SeedAsync(db);
+    var seederLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(DataSeeder));
+    await DataSeeder.SeedAsync(db, seederLogger);
 }
 
 app.UseMiddleware<ExceptionHandlerMiddleware>();
 app.MapOpenApi();
 app.MapScalarApiReference();
+
 app.MapControllers();
 
 app.Run();

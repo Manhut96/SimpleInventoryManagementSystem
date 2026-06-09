@@ -31,7 +31,7 @@ public sealed class ProductRepository(SIMSDbContext dbContext) : IProductReposit
             NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Uuid
         };
         await dbContext.Database.ExecuteSqlRawAsync(
-            "SELECT 1 FROM catalog.tbl_products WHERE id = ANY(@ids) FOR UPDATE",
+            """SELECT 1 FROM catalog.tbl_products WHERE "Id" = ANY(@ids) FOR UPDATE""",
             [idsParam], cancellationToken);
 
         return await dbContext.Products

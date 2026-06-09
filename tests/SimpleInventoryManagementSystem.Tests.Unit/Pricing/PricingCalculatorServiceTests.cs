@@ -22,6 +22,9 @@ public sealed class PricingCalculatorServiceTests
     private static DateTimeOffset RegularDate => new(2024, 6, 15, 0, 0, 0, TimeSpan.Zero);
     private static DateTimeOffset HolidayDate => new(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
+    // Black Friday 2024 = Nov 29 (1st Thursday = Nov 7, +22 days = Nov 29)
+    private static DateTimeOffset BlackFridayDate => new(2024, 11, 29, 0, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public void Calculate_NoDiscountApplicable_ReturnOriginalPrice()
     {
@@ -44,6 +47,18 @@ public sealed class PricingCalculatorServiceTests
         var result = sut.Calculate(items, Location.Us);
 
         result.Should().ContainSingle(i => i.ProductId == productId && i.FinalUnitPrice == 9m);
+    }
+
+    [Fact]
+    public void Calculate_UsLocationNoDiscount_ReturnsOriginalPrice()
+    {
+        var sut = BuildService(RegularDate);
+        var productId = Guid.NewGuid();
+        var items = new List<OrderLineItem> { new(productId, 1, 100m) };
+
+        var result = sut.Calculate(items, Location.Us);
+
+        result.Should().ContainSingle(i => i.ProductId == productId && i.FinalUnitPrice == 100m);
     }
 
     [Fact]
@@ -114,5 +129,31 @@ public sealed class PricingCalculatorServiceTests
 
         // 20% volume discount -> $80; Asia * 1.05 -> $84
         result.Should().ContainSingle(i => i.ProductId == productId && i.FinalUnitPrice == 84m);
+    }
+
+    [Fact]
+    public void Calculate_BlackFridayWinsOverVolumeTier2_AppliesBlackFridayToAllItems()
+    {
+        // BF saves: (10 * $100) * 0.25 = $250; volume tier2 saves: $1000 * 0.20 = $200 -> BF wins
+        var sut = BuildService(BlackFridayDate);
+        var productId = Guid.NewGuid();
+        var items = new List<OrderLineItem> { new(productId, 10, 100m) };
+
+        var result = sut.Calculate(items, Location.Us);
+
+        result.Should().ContainSingle(i => i.ProductId == productId && i.FinalUnitPrice == 75m); // 100 * 0.75
+    }
+
+    [Fact]
+    public void Calculate_VolumeTier3WinsOverBlackFriday_AppliesVolumeToAllItems()
+    {
+        // Volume tier3 saves: (50 * $100) * 0.30 = $1500; BF saves: $5000 * 0.25 = $1250 -> volume wins
+        var sut = BuildService(BlackFridayDate);
+        var productId = Guid.NewGuid();
+        var items = new List<OrderLineItem> { new(productId, 50, 100m) };
+
+        var result = sut.Calculate(items, Location.Us);
+
+        result.Should().ContainSingle(i => i.ProductId == productId && i.FinalUnitPrice == 70m); // 100 * 0.70
     }
 }

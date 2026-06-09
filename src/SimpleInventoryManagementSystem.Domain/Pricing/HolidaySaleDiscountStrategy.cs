@@ -15,4 +15,10 @@ public sealed class HolidaySaleDiscountStrategy : IDiscountStrategy
         var orderDate = context.OrderDate;
         return Holidays.Contains(new PolishHoliday(orderDate.Month, orderDate.Day)) ? 0.15m : null;
     }
+
+    public decimal ComputeSavings(decimal discountPct, decimal totalOrderValue, decimal maxUnitPrice)
+        => maxUnitPrice * discountPct;
+
+    public decimal GetFinalUnitPrice(OrderLineItem item, decimal discountPct, decimal maxUnitPrice)
+        => item.UnitPrice == maxUnitPrice ? item.UnitPrice * (1 - discountPct) : item.UnitPrice;
 }

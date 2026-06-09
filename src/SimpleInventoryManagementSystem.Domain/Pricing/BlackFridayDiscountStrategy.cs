@@ -12,11 +12,10 @@ public sealed class BlackFridayDiscountStrategy : IDiscountStrategy
         if (date.Month != 11 || date.DayOfWeek != DayOfWeek.Friday)
             return false;
 
-        // Find first Thursday in November, add 21 days (+3 weeks) = 4th Thursday, +1 day = Black Friday
         var firstThursday = new DateTimeOffset(date.Year, 11, 1, 0, 0, 0, date.Offset);
         while (firstThursday.DayOfWeek != DayOfWeek.Thursday)
             firstThursday = firstThursday.AddDays(1);
-        var blackFriday = firstThursday.AddDays(22);
+        var blackFriday = firstThursday.AddDays(3 * 7 + 1); // 3 weeks to 4th Thursday + 1 day to Friday
 
         return date.Date == blackFriday.Date;
     }

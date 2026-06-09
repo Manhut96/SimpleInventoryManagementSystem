@@ -38,37 +38,53 @@ public sealed class OutboxProcessor(
 
     private async Task<bool> ProcessPendingEventsAsync(CancellationToken stoppingToken)
     {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SIMSDbContext>();
+        var outboxEventRepository = scope.ServiceProvider.GetRequiredService<IOutboxEventRepository>();
+        var publisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
+        var dateTimeProvider = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
+
+        var pendingIds = await outboxEventRepository.GetPendingIdsAsync(100, stoppingToken);
+        if (pendingIds.Count == 0) return false;
+
+        var processedCount = 0;
+        foreach (var eventId in pendingIds)
+        {
+            var wasProcessed = await ProcessSingleEventAsync(
+                eventId, dbContext, outboxEventRepository, publisher, dateTimeProvider, stoppingToken);
+            if (wasProcessed) processedCount++;
+        }
+
+        logger.LogInformation("Processed {Count} outbox event(s)", processedCount);
+        return processedCount > 0;
+    }
+
+    private async Task<bool> ProcessSingleEventAsync(
+        Guid eventId,
+        SIMSDbContext dbContext,
+        IOutboxEventRepository outboxEventRepository,
+        IEventPublisher publisher,
+        IDateTimeProvider dateTimeProvider,
+        CancellationToken stoppingToken)
+    {
         try
         {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<SIMSDbContext>();
-            var publisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
-            var dateTimeProvider = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(stoppingToken);
 
-            var unprocessed = await db.OutboxEvents
-                .Where(e => e.ProcessedAt == null)
-                .Take(100)
-                .ToListAsync(stoppingToken);
+            var outboxEvent = await outboxEventRepository.TryLockSingleAsync(eventId, stoppingToken);
+            if (outboxEvent is null) return false;
 
-            if (unprocessed.Count == 0)
-                return false;
+            var domainEvent = new OutboxDomainEvent(outboxEvent.EventType, outboxEvent.Payload, dateTimeProvider.UtcNow);
+            await publisher.PublishAsync(domainEvent, stoppingToken);
+            outboxEvent.MarkProcessed(dateTimeProvider.UtcNow);
+            await dbContext.SaveChangesAsync(stoppingToken);
+            await transaction.CommitAsync(stoppingToken);
 
-            logger.LogInformation("Processing {Count} outbox event(s)", unprocessed.Count);
-
-            foreach (var outboxEvent in unprocessed)
-            {
-                var domainEvent = new OutboxDomainEvent(outboxEvent.EventType, outboxEvent.Payload, dateTimeProvider.UtcNow);
-                await publisher.PublishAsync(domainEvent, stoppingToken);
-                outboxEvent.MarkProcessed(dateTimeProvider.UtcNow);
-            }
-
-            await db.SaveChangesAsync(stoppingToken);
-            logger.LogInformation("Processed {Count} outbox event(s) successfully", unprocessed.Count);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "OutboxProcessor encountered an error while processing events");
+            logger.LogError(ex, "OutboxProcessor failed to process outbox event {EventId}", eventId);
             return false;
         }
     }

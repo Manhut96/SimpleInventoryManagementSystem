@@ -68,3 +68,7 @@ A thin repository layer (`IProductRepository`, `ICustomerRepository`, `IOrderRep
 ## 17. Secret Management
 
 Sensitive values (connection strings, passwords) are stored in `appsettings.json` / `appsettings.Development.json` for the convenience of this recruitment task only. In production these should be managed via a dedicated secret store (e.g. Azure Key Vault with Managed Identity, AWS Secrets Manager, or HashiCorp Vault) and never committed to source control.
+
+## 18. One Line Item Per Product Per Order
+
+`OrderItem` is modelled as a Value Object owned by `OrderEntity` and persisted via EF Core `OwnsMany`. The composite primary key `(OrderId, ProductId)` means each product can appear at most once per order.

@@ -30,6 +30,22 @@ public sealed class ProductsEndpointTests : IClassFixture<CustomWebApplicationFa
     }
 
     [Fact]
+    public async Task GetProducts_PageNumberZero_Returns400()
+    {
+        var response = await _client.GetAsync("/products?pageNumber=0");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetProducts_PageSizeExceedsMaximum_Returns400()
+    {
+        var response = await _client.GetAsync("/products?pageSize=101");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task PostProducts_ValidRequest_Returns201WithProductDto()
     {
         var body = new { name = "Integration Test Mug", description = "Test description", price = 9.99m, stock = 10 };
@@ -55,5 +71,45 @@ public sealed class ProductsEndpointTests : IClassFixture<CustomWebApplicationFa
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var json = await response.Content.ReadAsStringAsync();
         json.Should().Contain("Name");
+    }
+
+    [Fact]
+    public async Task PostProducts_NameTooLong_Returns400()
+    {
+        var body = new { name = new string('a', 51), description = "Valid description", price = 9.99m, stock = 5 };
+
+        var response = await _client.PostAsJsonAsync("/products", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostProducts_DescriptionTooLong_Returns400()
+    {
+        var body = new { name = "Valid Name", description = new string('d', 51), price = 9.99m, stock = 5 };
+
+        var response = await _client.PostAsJsonAsync("/products", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostProducts_ZeroPrice_Returns400()
+    {
+        var body = new { name = "Valid Name", description = "Valid description", price = 0m, stock = 5 };
+
+        var response = await _client.PostAsJsonAsync("/products", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostProducts_NegativeStock_Returns400()
+    {
+        var body = new { name = "Valid Name", description = "Valid description", price = 9.99m, stock = -1 };
+
+        var response = await _client.PostAsJsonAsync("/products", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

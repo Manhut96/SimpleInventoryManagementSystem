@@ -6,20 +6,21 @@ namespace SimpleInventoryManagementSystem.Tests.Unit.Pricing;
 
 public sealed class VolumeDiscountStrategyTests
 {
-    private readonly VolumeDiscountStrategy _sut = new(new VolumeDiscountOptions());
+    private static readonly VolumeDiscountOptions Options = new();
+    private readonly VolumeDiscountStrategy _sut = new(Options);
 
     private static PricingContext ContextWithQuantity(int totalQuantity)
         => new([new OrderLineItem(Guid.NewGuid(), totalQuantity, 10m)], DateTimeOffset.UtcNow);
 
     public static TheoryData<int, decimal?> VolumeBoundaries => new()
     {
-        { 4,  null   },
-        { 5,  0.10m  },
-        { 9,  0.10m  },
-        { 10, 0.20m  },
-        { 49, 0.20m  },
-        { 50, 0.30m  },
-        { 51, 0.30m  },
+        { Options.Tier1MinQuantity - 1, null                },
+        { Options.Tier1MinQuantity,     Options.Tier1Rate   },
+        { Options.Tier2MinQuantity - 1, Options.Tier1Rate   },
+        { Options.Tier2MinQuantity,     Options.Tier2Rate   },
+        { Options.Tier3MinQuantity - 1, Options.Tier2Rate   },
+        { Options.Tier3MinQuantity,     Options.Tier3Rate   },
+        { Options.Tier3MinQuantity + 1, Options.Tier3Rate   },
     };
 
     [Theory]
@@ -45,6 +46,6 @@ public sealed class VolumeDiscountStrategyTests
 
         var result = _sut.TryGetDiscount(context);
 
-        result.Should().Be(0.10m);
+        result.Should().Be(Options.Tier1Rate);
     }
 }

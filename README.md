@@ -4,6 +4,13 @@ RESTful inventory management API built with .NET 10, EF Core, PostgreSQL, and Me
 
 ---
 
+## Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or a compatible Docker engine)
+
+---
+
 ## Quick Start
 
 ```bash
@@ -54,6 +61,8 @@ Use these GUIDs as `customerId` in `POST /orders`:
 | Bob   | Europe   | `22222222-0000-0000-0000-000000000002` |
 | Carol | Asia     | `33333333-0000-0000-0000-000000000003` |
 
+Customers are seeded automatically on first startup if the database is empty.
+
 ---
 
 ## Architecture
@@ -67,10 +76,20 @@ Domain events are written atomically with business data via the Outbox pattern; 
 
 ---
 
+## Database Schema Overview
+
+| Schema     | Tables                                       | Purpose                              |
+|------------|----------------------------------------------|--------------------------------------|
+| `catalog`  | `tbl_products`                               | Product catalogue with stock levels  |
+| `ordering` | `tbl_customers`, `tbl_orders`, `tbl_order_items` | Customers and placed orders      |
+| `events`   | `tbl_outbox_events`                          | Outbox for domain event delivery     |
+
+---
+
 ## Tests
 
 ```bash
 dotnet test
 ```
 
-Unit tests run without a database. Integration tests spin up PostgreSQL via Testcontainers — Docker must be running.
+Unit tests run without a database. Integration tests spin up PostgreSQL via Testcontainers — **Docker must be running** when executing the integration test project.

@@ -35,7 +35,7 @@ public sealed class PricingCalculatorService(
             var discount = strategy.TryGetDiscount(context);
             if (discount is null) continue;
 
-            var savings = ComputeSavings(strategy, discount.Value, totalOrderValue, maxUnitPrice);
+            var savings = strategy.ComputeSavings(discount.Value, totalOrderValue, maxUnitPrice);
             if (savings > bestSavings)
             {
                 bestSavings = savings;
@@ -47,28 +47,12 @@ public sealed class PricingCalculatorService(
         return new DiscountWinner(bestStrategy, bestPct);
     }
 
-    private static decimal ComputeSavings(
-        IDiscountStrategy strategy, decimal discountPct, decimal totalOrderValue, decimal maxUnitPrice)
-        => strategy is HolidaySaleDiscountStrategy
-            ? maxUnitPrice * discountPct
-            : totalOrderValue * discountPct;
-
     private static PricedOrderLineItem PriceItem(
         OrderLineItem item, DiscountWinner winner, decimal maxUnitPrice, decimal locationMultiplier)
     {
-        var discounted = ApplyStrategyDiscount(item, winner, maxUnitPrice);
-        return new PricedOrderLineItem(item.ProductId, item.Quantity, item.UnitPrice, discounted * locationMultiplier);
-    }
-
-    private static decimal ApplyStrategyDiscount(
-        OrderLineItem item, DiscountWinner winner, decimal maxUnitPrice)
-    {
-        if (winner.Strategy is HolidaySaleDiscountStrategy && item.UnitPrice == maxUnitPrice)
-            return item.UnitPrice * (1 - winner.Pct!.Value);
-
-        if (winner.Strategy is not null and not HolidaySaleDiscountStrategy)
-            return item.UnitPrice * (1 - winner.Pct!.Value);
-
-        return item.UnitPrice;
+        var finalUnitPrice = winner.Strategy is not null
+            ? winner.Strategy.GetFinalUnitPrice(item, winner.Pct!.Value, maxUnitPrice)
+            : item.UnitPrice;
+        return new PricedOrderLineItem(item.ProductId, item.Quantity, item.UnitPrice, finalUnitPrice * locationMultiplier);
     }
 }

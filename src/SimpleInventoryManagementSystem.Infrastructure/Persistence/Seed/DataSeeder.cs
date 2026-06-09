@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SimpleInventoryManagementSystem.Domain.Entities;
 using SimpleInventoryManagementSystem.Domain.Enums;
 
@@ -6,7 +7,7 @@ namespace SimpleInventoryManagementSystem.Infrastructure.Persistence.Seed;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(SIMSDbContext db)
+    public static async Task SeedAsync(SIMSDbContext db, ILogger logger)
     {
         if (await db.Customers.AnyAsync()) return;
 
@@ -17,7 +18,9 @@ public static class DataSeeder
         db.Products.AddRange(products);
         await db.SaveChangesAsync();
 
-        LogSeededCustomers(customers);
+        logger.LogInformation("[DataSeeder] Seeded customers:");
+        foreach (var customer in customers)
+            logger.LogInformation("  {Name}: {CustomerId}", customer.Name, customer.Id);
     }
 
     private static List<CustomerEntity> SeedCustomers()
@@ -40,12 +43,5 @@ public static class DataSeeder
             ProductEntity.Create("Mouse",       "Wireless mouse",         40m, 100),
             ProductEntity.Create("Headphones",  "Over-ear headphones",   150m, 30)
         ];
-    }
-
-    private static void LogSeededCustomers(List<CustomerEntity> customers)
-    {
-        Console.WriteLine("[DataSeeder] Seeded customers:");
-        foreach (var customer in customers)
-            Console.WriteLine($"  {customer.Name}: {customer.Id}");
     }
 }

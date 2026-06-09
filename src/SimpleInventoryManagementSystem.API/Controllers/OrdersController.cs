@@ -17,8 +17,8 @@ public class OrdersController(IMediator mediator) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
     {
-        var command = new CreateOrderCommand(request.CustomerId, request.Items);
+        var command = new CreateOrderCommand(request.CustomerId, request.Products);
         var result = await mediator.Send(command);
-        return Created("", result);
+        return Created($"/orders/{result.Id}", result);
     }
 }

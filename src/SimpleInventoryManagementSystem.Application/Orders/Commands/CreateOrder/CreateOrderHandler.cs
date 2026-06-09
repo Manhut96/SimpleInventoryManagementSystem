@@ -27,10 +27,13 @@ public sealed class CreateOrderHandler(
     protected override async Task<OrderDto> HandleCoreAsync(CreateOrderCommand request, CancellationToken cancellationToken)
     {
         var customer = await LoadCustomerAsync(request.CustomerId, cancellationToken);
-        var products = await LoadProductsAsync(request.Items, cancellationToken);
-        var rawItems = BuildRawLineItems(request.Items, products);
+        var products = await LoadProductsAsync(request.Products, cancellationToken);
+        var rawItems = request.Products
+            .Select(i => new OrderLineItem(i.ProductId, i.Quantity, products[i.ProductId].Price))
+            .ToList();
         var pricedItems = pricingCalculator.Calculate(rawItems, customer.Location);
-        DeductStock(request.Items, products);
+        foreach (var item in request.Products)
+            products[item.ProductId].DeductStock(item.Quantity);
         var order = CreateOrder(request.CustomerId, pricedItems, DateTimeProvider.UtcNow);
         orderRepository.Add(order);
         WriteEvent(new OrderCreatedEvent(order.Id, order.CustomerId, order.TotalAmount, DateTimeProvider.UtcNow));
@@ -65,35 +68,17 @@ public sealed class CreateOrderHandler(
         return products;
     }
 
-    private static IReadOnlyList<OrderLineItem> BuildRawLineItems(
-        IReadOnlyList<OrderItemRequest> items,
-        Dictionary<Guid, ProductEntity> products)
-        => items
-            .Select(i => new OrderLineItem(i.ProductId, i.Quantity, products[i.ProductId].Price))
-            .ToList();
-
-    private static void DeductStock(
-        IReadOnlyList<OrderItemRequest> items,
-        Dictionary<Guid, ProductEntity> products)
-    {
-        foreach (var item in items)
-            products[item.ProductId].DeductStock(item.Quantity);
-    }
-
     private static OrderEntity CreateOrder(
         Guid customerId,
         IReadOnlyList<PricedOrderLineItem> pricedItems,
         DateTimeOffset placedAt)
     {
-        var orderItems = BuildOrderItems(pricedItems);
+        var orderItems = pricedItems
+            .Select(p => OrderItem.Create(p.ProductId, p.Quantity, p.UnitPrice, p.FinalUnitPrice))
+            .ToList();
         var totalAmount = pricedItems.Sum(p => p.FinalUnitPrice * p.Quantity);
         return OrderEntity.Create(customerId, orderItems, totalAmount, placedAt);
     }
-
-    private static IReadOnlyList<OrderItem> BuildOrderItems(IReadOnlyList<PricedOrderLineItem> pricedItems)
-        => pricedItems
-            .Select(p => OrderItem.Create(p.ProductId, p.Quantity, p.UnitPrice, p.FinalUnitPrice))
-            .ToList();
 
     private static OrderDto MapToDto(OrderEntity order)
     {

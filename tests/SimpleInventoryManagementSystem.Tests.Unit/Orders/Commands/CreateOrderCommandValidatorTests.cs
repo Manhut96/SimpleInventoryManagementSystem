@@ -39,7 +39,7 @@ public sealed class CreateOrderCommandValidatorTests
 
         var result = _sut.TestValidate(command);
 
-        result.ShouldHaveValidationErrorFor(x => x.Items);
+        result.ShouldHaveValidationErrorFor(x => x.Products);
     }
 
     [Fact]
